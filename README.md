@@ -3,4 +3,4 @@
 
 Please look at the [ sample code branch](http://github.com/enthusiasai/traffic_dynamics_transformer/blob/sample/README.md)
 
-And improve [your branch](http://github.com/enthusiasai/traffic_dynamics_transformer/blob/Andreas/)
+And improve [your branch](https://github.com/enthusiasai/traffic_dynamics_transformer/tree/Andreas)
