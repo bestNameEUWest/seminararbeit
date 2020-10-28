@@ -1,5 +1,5 @@
 # Traffic Dynamics Transformer
-## Description: Prediction of Traffic Dynamics using Transformer-based Model
+Description: Prediction of Traffic Dynamics using Transformer-based Model
 
 You can learn from the [sample code here](https://github.com/enthusiasai/traffic_dynamics_transformer/tree/sample)
 
