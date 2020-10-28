@@ -1,6 +1,6 @@
 # Sample code for Traffic_Dynamics_Transformer
 
-The code is based on this work:
+The code is based on this work: [Transormer Network for Trajectory Prediction](https://arxiv.org/pdf/2003.08111.pdf)
 ```
 @misc{giuliari2020transformer,
     title={Transformer Networks for Trajectory Forecasting},
