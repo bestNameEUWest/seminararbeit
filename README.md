@@ -1,6 +1,6 @@
 # Sample code for Traffic_Dynamics_Transformer
-
-run the following command:
+- Clone this repository to Google Colab
+- Run the following command:
 ```
 python train.py
 ```
