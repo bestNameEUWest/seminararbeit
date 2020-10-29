@@ -7,4 +7,4 @@ STEP 2: [Try with the rounD dataset](https://github.com/enthusiasai/traffic_dyna
 
 STEP 3: [Add Visualization](https://github.com/enthusiasai/traffic_dynamics_transformer/tree/andreas_visualization)
 
-STEP 4: [Improve your code here](https://github.com/enthusiasai/traffic_dynamics_transformer/tree/Andreas)
+STEP 4: [Re-configure the network](https://github.com/enthusiasai/traffic_dynamics_transformer/tree/andreas_reconfig)
