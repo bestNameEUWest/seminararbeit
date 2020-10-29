@@ -7,7 +7,7 @@ Usage:
 ```
 python train.py
 ```
-- Play with the code
+- Enjoy the code
 
 ---------------------
 The code is based on this work: [Transformer Network for Trajectory Prediction](https://arxiv.org/pdf/2003.08111.pdf)
