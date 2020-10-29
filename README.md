@@ -9,4 +9,6 @@ STEP 3: [Add Visualization](https://github.com/enthusiasai/traffic_dynamics_tran
 
 STEP 4: [Re-configure the network](https://github.com/enthusiasai/traffic_dynamics_transformer/tree/andreas_reconfig)
 
-Step 5: Analysis & Report
+Step 5: Training & Prediction on Local GPU
+
+Step 6: Analysis & Report
