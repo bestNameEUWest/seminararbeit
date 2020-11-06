@@ -101,7 +101,8 @@ def create_dataset(dataset_folder,dataset_name,val_size,gt,horizon,delim="\t",tr
 
         return IndividualTfDataset(data, "train", mean, std), None
 
-        return IndividualTfDataset(data,"train",mean,std), IndividualTfDataset(data_val,"validation",mean,std)
+        # we do not need this line
+        # return IndividualTfDataset(data,"train",mean,std), IndividualTfDataset(data_val,"validation",mean,std)
 
 
 
