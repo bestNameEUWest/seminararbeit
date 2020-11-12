@@ -15,6 +15,6 @@ STEP 4: [Re-configure the network](https://github.com/enthusiasmai/traffic_dynam
 
 Step 5: Training & Prediction on Local GPU (Deadline: 03 Dec. 2020) 
 
-Step 6: Analysis & Report (Deadline: 10. Dec. 2020)
+Step 6: Analysis, Optimization & Report (Deadline: 10. Dec. 2020)
 
 Step 7: Presentation (Deadline: 17 Dec. 2020)
