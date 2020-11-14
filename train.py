@@ -83,7 +83,7 @@ def main():
     except:
         pass
     try:
-        os.mkdir(f'{args.torch_dataset_folder}/Individual/{args.name}')
+        os.mkdir(f'{args.torch_dataset_folder}/Individual/{args.dataset_name}')
     except:
         pass
     
@@ -96,27 +96,34 @@ def main():
     args.verbose=True    
         
     try:        
-        train_dataset = torch.load(os.path.join(args.torch_dataset_folder, 'Individual', args.name, f'torch_{args.dataset_name}_train.pt'))
-        val_dataset = torch.load(os.path.join(args.torch_dataset_folder, 'Individual', args.name, f'torch_{args.dataset_name}_val.pt'))
-        test_dataset = torch.load(os.path.join(args.torch_dataset_folder, 'Individual', args.name, f'torch_{args.dataset_name}_test.pt'))
-        print('Loaded pytorch data from drive.')
+        train_dataset = torch.load(os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_train.pt'))
+        print('Loaded pytorch train data from drive.')
+        val_dataset = torch.load(os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_val.pt'))
+        print('Loaded pytorch validation data from drive.')
     except FileNotFoundError:
-        print('No pytorch data on drive found. Data Preparing ...')
+        print('No pytorch train or validation data found on drive. Preparing data...')
         if args.val_size==0:
             train_dataset,_ = baselineUtils.create_dataset(args.dataset_folder,args.dataset_name,0,args.obs,args.preds,delim=args.delim,train=True,verbose=args.verbose)
             val_dataset, _ = baselineUtils.create_dataset(args.dataset_folder, args.dataset_name, 0, args.obs,
                                                                         args.preds, delim=args.delim, train=False,
                                                                         verbose=args.verbose)
+            
         else:
             train_dataset, val_dataset = baselineUtils.create_dataset(args.dataset_folder, args.dataset_name, args.val_size,args.obs,
                                                                   args.preds, delim=args.delim, train=True,
                                                                   verbose=args.verbose)
+        torch.save(train_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_train.pt'))
+        torch.save(val_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_val.pt'))
 
-        test_dataset,_ =  baselineUtils.create_dataset(args.dataset_folder,args.dataset_name,0,args.obs,args.preds,delim=args.delim,train=False,eval=True,verbose=args.verbose)
-
-        torch.save(train_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.name, f'torch_{args.dataset_name}_train.pt'))
-        torch.save(val_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.name, f'torch_{args.dataset_name}_val.pt'))
-        torch.save(test_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.name, f'torch_{args.dataset_name}_test.pt'))        
+    try:
+        pass
+        #test_dataset = torch.load(os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_test.pt'))
+        #print('Loaded pytorch test data from drive.')
+    except: 
+        pass   
+        #print('No pytorch test data found on drive. Preparing data ...')
+        #test_dataset,_ =  baselineUtils.create_dataset(args.dataset_folder,args.dataset_name,0,args.obs,args.preds,delim=args.delim,train=False,eval=True,verbose=args.verbose)
+        #torch.save(test_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_test.pt'))        
    
     
     import individual_TF    
@@ -132,7 +139,7 @@ def main():
     
     tr_dl = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
     val_dl = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
-    test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
+    #test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
     
     mean=torch.cat((train_dataset[:]['src'][:,1:,2:4],train_dataset[:]['trg'][:,:,2:4]),1).mean((0,1))
     std=torch.cat((train_dataset[:]['src'][:,1:,2:4],train_dataset[:]['trg'][:,:,2:4]),1).std((0,1))
