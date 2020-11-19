@@ -1,13 +1,10 @@
+
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
-
-__pycache__
-.idea/
-output/
+### files ###
+torch_datasets/*
 models/
-logs/
-env
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
