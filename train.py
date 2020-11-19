@@ -35,7 +35,7 @@ def main():
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--max_epoch',type=int, default=20)
 
-    parser.add_argument('--batch_size',type=int,default=500) 
+    parser.add_argument('--batch_size',type=int,default=1) 
 
     parser.add_argument('--resume_train',action='store_true')
     parser.add_argument('--delim',type=str,default='\t')
@@ -117,13 +117,13 @@ def main():
 
     try:
         pass
-        #test_dataset = torch.load(os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_test.pt'))
-        #print('Loaded pytorch test data from drive.')
+        test_dataset = torch.load(os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_test.pt'))
+        print('Loaded pytorch test data from drive.')
     except: 
         pass   
-        #print('No pytorch test data found on drive. Preparing data ...')
-        #test_dataset,_ =  baselineUtils.create_dataset(args.dataset_folder,args.dataset_name,0,args.obs,args.preds,delim=args.delim,train=False,eval=True,verbose=args.verbose)
-        #torch.save(test_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_test.pt'))        
+        print('No pytorch test data found on drive. Preparing data ...')
+        test_dataset,_ =  baselineUtils.create_dataset(args.dataset_folder,args.dataset_name,0,args.obs,args.preds,delim=args.delim,train=False,eval=True,verbose=args.verbose)
+        torch.save(test_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_test.pt'))        
    
     
     import individual_TF    

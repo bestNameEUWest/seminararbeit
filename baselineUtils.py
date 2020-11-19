@@ -7,6 +7,7 @@ import random
 import scipy.spatial
 import scipy.io
 
+
 def create_dataset(dataset_folder,dataset_name,val_size,gt,horizon,delim="\t",train=True,eval=False,verbose=False):
 
         if train==True:
@@ -151,7 +152,7 @@ def get_strided_data_clust(dt, gt_size, horizon, step):
     frame=[]
     ped_ids=[]
     for p in ped:
-        for i in range(1+(raw_data[raw_data.ped == p].shape[0] - gt_size - horizon) // step):
+        for i in range(1+(raw_data[raw_data.ped == p].shape[0] - gt_size - horizon) // step):            
             frame.append(dt[dt.ped == p].iloc[i * step:i * step + gt_size + horizon, [0]].values.squeeze())
             inp_te.append(raw_data[raw_data.ped == p].iloc[i * step:i * step + gt_size + horizon, 2:4].values)
             ped_ids.append(p)
