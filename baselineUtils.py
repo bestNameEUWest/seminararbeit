@@ -8,7 +8,7 @@ import scipy.spatial
 import scipy.io
 
 
-def create_dataset(dataset_folder,dataset_name,val_size,gt,horizon,delim="\t",train=True,eval=False,verbose=False):
+def create_dataset(dataset_folder,dataset_name,val_size,gt,horizon,delim="\t",train=True,eval=False,verbose=False, step=1):
 
         if train==True:
             datasets_list = os.listdir(os.path.join(dataset_folder,dataset_name, "train"))
@@ -43,7 +43,7 @@ def create_dataset(dataset_folder,dataset_name,val_size,gt,horizon,delim="\t",tr
             raw_data = pd.read_csv(os.path.join(full_dt_folder, dt), delimiter=delim,
                                             names=["frame", "ped", "x", "y"],usecols=[0,1,2,3],na_values="?")
             raw_data.sort_values(by=['frame','ped'], inplace=True)
-            inp,out,info=get_strided_data_clust(raw_data,gt,horizon,1)
+            inp,out,info=get_strided_data_clust(raw_data,gt,horizon,step)
             dt_frames=info['frames']
             dt_seq_start=info['seq_start']
             dt_dataset=np.array([i_dt]).repeat(inp.shape[0])
