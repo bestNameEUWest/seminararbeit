@@ -25,9 +25,10 @@ def main():
     parser.add_argument('--obs',type=int,default=8)
     parser.add_argument('--preds',type=int,default=12)
     parser.add_argument('--emb_size',type=int,default=512) 
+    parser.add_argument('--step',type=int,default=1) 
 
     parser.add_argument('--heads',type=int, default=8) 
-    parser.add_argument('--layers',type=int,default=6) 
+    parser.add_argument('--layers',type=int,default=4) 
     parser.add_argument('--dropout',type=float,default=0.1)
 
     parser.add_argument('--cpu',action='store_true')
@@ -35,7 +36,7 @@ def main():
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--max_epoch',type=int, default=20)
 
-    parser.add_argument('--batch_size',type=int,default=1) 
+    parser.add_argument('--batch_size',type=int,default=512) 
 
     parser.add_argument('--resume_train',action='store_true')
     parser.add_argument('--delim',type=str,default='\t')
@@ -103,15 +104,13 @@ def main():
     except FileNotFoundError:
         print('No pytorch train or validation data found on drive. Preparing data...')
         if args.val_size==0:
-            train_dataset,_ = baselineUtils.create_dataset(args.dataset_folder,args.dataset_name,0,args.obs,args.preds,delim=args.delim,train=True,verbose=args.verbose)
-            val_dataset, _ = baselineUtils.create_dataset(args.dataset_folder, args.dataset_name, 0, args.obs,
-                                                                        args.preds, delim=args.delim, train=False,
-                                                                        verbose=args.verbose)
+            train_dataset,_ = baselineUtils.create_dataset(args.dataset_folder,args.dataset_name,0,args.obs,args.preds,delim=args.delim,train=True,verbose=args.verbose, step=args.step)
+            val_dataset, _ = baselineUtils.create_dataset(args.dataset_folder, args.dataset_name, 0, args.obs, args.preds, delim=args.delim, train=False, verbose=args.verbose, step=args.step)
             
         else:
             train_dataset, val_dataset = baselineUtils.create_dataset(args.dataset_folder, args.dataset_name, args.val_size,args.obs,
                                                                   args.preds, delim=args.delim, train=True,
-                                                                  verbose=args.verbose)
+                                                                  verbose=args.verbose, step=args.step)
         torch.save(train_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_train.pt'))
         torch.save(val_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_val.pt'))
 
@@ -122,7 +121,7 @@ def main():
     except: 
         pass   
         print('No pytorch test data found on drive. Preparing data ...')
-        test_dataset,_ =  baselineUtils.create_dataset(args.dataset_folder,args.dataset_name,0,args.obs,args.preds,delim=args.delim,train=False,eval=True,verbose=args.verbose)
+        test_dataset,_ =  baselineUtils.create_dataset(args.dataset_folder,args.dataset_name,0,args.obs,args.preds,delim=args.delim,train=False,eval=True,verbose=args.verbose, step=args.step)
         torch.save(test_dataset, os.path.join(args.torch_dataset_folder, 'Individual', args.dataset_name, f'torch_{args.dataset_name}_test.pt'))        
    
     
@@ -133,8 +132,8 @@ def main():
     # we currently leave layers at 4 and batch_size at 32 for quicker learning
     params = {
       'heads': [args.heads], #[4, 16],
-      'layers': [4], #[4, 8], 
-      'batch_size': [32] #[32, 512]
+      'layers': [args.layers], #[4, 8], 
+      'batch_size': [args.batch_size] #[32, 512]
     }
     
     tr_dl = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
