@@ -8,172 +8,178 @@ import scipy.spatial
 import scipy.io
 
 
-def create_dataset(dataset_folder,dataset_name,val_size,gt,horizon,delim="\t",train=True,eval=False,verbose=False, step=1):
+def create_dataset(dataset_folder, dataset_name, gt,horizon, features,delim="\t",train=True,eval=False,verbose=False, step=1):
+  if train==True:
+    data_type = "train"
+    datasets_list = os.listdir(os.path.join(dataset_folder,dataset_name, data_type))
+    full_dt_folder=os.path.join(dataset_folder,dataset_name, data_type)    
+  if train==False and eval==False:
+    data_type = "val"
+    datasets_list = os.listdir(os.path.join(dataset_folder, dataset_name, data_type))
+    full_dt_folder = os.path.join(dataset_folder, dataset_name, data_type)        
+  if train==False and eval==True:
+    data_type = "test"
+    datasets_list = os.listdir(os.path.join(dataset_folder, dataset_name, data_type))
+    full_dt_folder = os.path.join(dataset_folder, dataset_name, data_type)
+    
 
-        if train==True:
-            datasets_list = os.listdir(os.path.join(dataset_folder,dataset_name, "train"))
-            full_dt_folder=os.path.join(dataset_folder,dataset_name, "train")
-        if train==False and eval==False:
-            datasets_list = os.listdir(os.path.join(dataset_folder, dataset_name, "val"))
-            full_dt_folder = os.path.join(dataset_folder, dataset_name, "val")
-        if train==False and eval==True:
-            datasets_list = os.listdir(os.path.join(dataset_folder, dataset_name, "test"))
-            full_dt_folder = os.path.join(dataset_folder, dataset_name, "test")
+  datasets_list=datasets_list
+  data={}
+  data_src=[]
+  data_trg=[]
+  data_seq_start=[]
+  data_frames=[]
+  data_dt=[]
+  data_objs=[]
 
-
-        datasets_list=datasets_list
-        data={}
-        data_src=[]
-        data_trg=[]
-        data_seq_start=[]
-        data_frames=[]
-        data_dt=[]
-        data_peds=[]
-
-        val_src = []
-        val_trg = []
-        val_seq_start = []
-        val_frames = []
-        val_dt = []
-        val_peds=[]
-
-
-        for i_dt, dt in enumerate(datasets_list):
-
-            raw_data = pd.read_csv(os.path.join(full_dt_folder, dt), delimiter=delim,
-                                            names=["frame", "ped", "x", "y"],usecols=[0,1,2,3],na_values="?")
-            raw_data.sort_values(by=['frame','ped'], inplace=True)
-            inp,out,info=get_strided_data_clust(raw_data,gt,horizon,step)
-            dt_frames=info['frames']
-            dt_seq_start=info['seq_start']
-            dt_dataset=np.array([i_dt]).repeat(inp.shape[0])
-            dt_peds=info['peds']
+  val_src = []
+  val_trg = []
+  val_seq_start = []
+  val_frames = []
+  val_dt = []
+  val_objs=[]
 
 
-            if val_size>0 and inp.shape[0]>val_size*2.5:
-                if verbose:
-                    print("created validation from %s" % (dt))
-                k = random.sample(np.arange(inp.shape[0]).tolist(), val_size)
-                val_src.append(inp[k, :, :])
-                val_trg.append(out[k, :, :])
-                val_seq_start.append(dt_seq_start[k, :, :])
-                val_frames.append(dt_frames[k, :])
-                val_dt.append(dt_dataset[k])
-                val_peds.append(dt_peds[k])
-                inp = np.delete(inp, k, 0)
-                out = np.delete(out, k, 0)
-                dt_frames = np.delete(dt_frames, k, 0)
-                dt_seq_start = np.delete(dt_seq_start, k, 0)
-                dt_dataset = np.delete(dt_dataset, k, 0)
-                dt_peds = np.delete(dt_peds,k,0)
-            elif val_size>0:
-                if verbose:
-                    print("could not create validation from %s, size -> %i" % (dt,inp.shape[0]))
+  for i_dt, dt in enumerate(datasets_list):
+    raw_data = pd.read_csv(os.path.join(full_dt_folder, dt), delimiter=delim, na_values="?")
+    raw_data = raw_data.rename(columns={'trackId': 'obj', 'xCenter': 'x', 'yCenter': 'y'})
+    raw_data = raw_data[features]
+    raw_data.sort_values(by=[raw_data.columns[0], raw_data.columns[1]], inplace=True)
+    inp,out,info=get_strided_data_clust(raw_data, gt, horizon, step)
+    dt_frames=info['frames']
+    dt_seq_start=info['seq_start']
+    dt_dataset=np.array([i_dt]).repeat(inp.shape[0])
+    dt_objs=info['objs']   
 
-            data_src.append(inp)
-            data_trg.append(out)
-            data_seq_start.append(dt_seq_start)
-            data_frames.append(dt_frames)
-            data_dt.append(dt_dataset)
-            data_peds.append(dt_peds)
+    data_src.append(inp)
+    data_trg.append(out)
+    data_seq_start.append(dt_seq_start)
+    data_frames.append(dt_frames)
+    data_dt.append(dt_dataset)
+    data_objs.append(dt_objs)
 
+  data['src'] = np.concatenate(data_src, 0)
+  data['trg'] = np.concatenate(data_trg, 0)
+  data['seq_start'] = np.concatenate(data_seq_start, 0)
+  data['frames'] = np.concatenate(data_frames, 0)
+  data['dataset'] = np.concatenate(data_dt, 0)
+  data['objs'] = np.concatenate(data_objs, 0)
+  data['dataset_name'] = datasets_list
 
-        data['src'] = np.concatenate(data_src, 0)
-        data['trg'] = np.concatenate(data_trg, 0)
-        data['seq_start'] = np.concatenate(data_seq_start, 0)
-        data['frames'] = np.concatenate(data_frames, 0)
-        data['dataset'] = np.concatenate(data_dt, 0)
-        data['peds'] = np.concatenate(data_peds, 0)
-        data['dataset_name'] = datasets_list
+  mean= data['src'].mean((0,1))
+  std= data['src'].std((0,1))
 
-        mean= data['src'].mean((0,1))
-        std= data['src'].std((0,1))
-
-        if val_size>0:
-            data_val={}
-            data_val['src']=np.concatenate(val_src,0)
-            data_val['trg'] = np.concatenate(val_trg, 0)
-            data_val['seq_start'] = np.concatenate(val_seq_start, 0)
-            data_val['frames'] = np.concatenate(val_frames, 0)
-            data_val['dataset'] = np.concatenate(val_dt, 0)
-            data_val['peds'] = np.concatenate(val_peds, 0)
-
-            return IndividualTfDataset(data, "train", mean, std), IndividualTfDataset(data_val, "validation", mean, std)
-
-        return IndividualTfDataset(data, "train", mean, std), None
-
-        # we do not need this line
-        # return IndividualTfDataset(data,"train",mean,std), IndividualTfDataset(data_val,"validation",mean,std)
+  
+  return IndividualTfDataset(data, data_type, mean, std)
 
 
 
 class IndividualTfDataset(Dataset):
-    def __init__(self,data,name,mean,std):
-        super(IndividualTfDataset,self).__init__()
+  def __init__(self,data,name,mean,std):
+    super(IndividualTfDataset,self).__init__()
 
-        self.data=data
-        self.name=name
+    self.data=data
+    self.name=name
 
-        self.mean= mean
-        self.std = std
+    self.mean= mean
+    self.std = std
 
-    def __len__(self):
-        return self.data['src'].shape[0]
-
-
-    def __getitem__(self,index):
-        return {'src':torch.Tensor(self.data['src'][index]),
-                'trg':torch.Tensor(self.data['trg'][index]),
-                'frames':self.data['frames'][index],
-                'seq_start':self.data['seq_start'][index],
-                'dataset':self.data['dataset'][index],
-                'peds': self.data['peds'][index],
-                }
+  def __len__(self):
+    return self.data['src'].shape[0]
 
 
-def create_folders(baseFolder,datasetName):
-    try:
-        os.mkdir(baseFolder)
-    except:
+  def __getitem__(self,index):
+    return {'src':torch.Tensor(self.data['src'][index]),
+            'trg':torch.Tensor(self.data['trg'][index]),
+            'frames':self.data['frames'][index],
+            'seq_start':self.data['seq_start'][index],
+            'dataset':self.data['dataset'][index],
+            'objs': self.data['objs'][index],
+            }
+
+def format_raw_dataset(raw_dataset_folder, dataset_name):
+  validation_ratio = 0.2
+  test_dataset = '01_tracks.csv'
+  target_dataset_folder = 'datasets'
+  datasets_list = [dir for dir in os.listdir(os.path.join(raw_dataset_folder, dataset_name))]
+  os.makedirs(os.path.join(target_dataset_folder, dataset_name))      
+
+  for (i_d, dataset) in enumerate(datasets_list):  
+    data = pd.read_csv(os.path.join(raw_dataset_folder, dataset_name, dataset))
+    data = data.rename(columns={'trackId': 'obj', 'xCenter': 'x', 'yCenter': 'y'})
+    data = data[relevant_cols]
+    
+    for set_type in ['train', 'val', 'test']:    
+      try:
+        path = os.path.join(target_dataset_folder, dataset_name, set_type)
+        os.makedirs(path)      
+      except:
         pass
 
-    try:
-        os.mkdir(os.path.join(baseFolder,datasetName))
-    except:
-        pass
+    if dataset == test_dataset:
+      test_path = os.path.join(f'{target_dataset_folder}', dataset_name, 'test', f'{i_d:02d}_test.csv')
+      data.to_csv(path_or_buf=test_path, index=False, sep='\t')
+    else:
+      size = data.shape[0]
+      cutoff_num = int((1-ratio)*size)
+      data_train = data.head(cutoff_num)  
+      data_val = data.tail(size - cutoff_num)  
 
+      train_path = os.path.join(f'{target_dataset_folder}', dataset_name, 'train', f'{i_d:02d}_train.csv')
+      val_path = os.path.join(f'{target_dataset_folder}', dataset_name, 'val', f'{i_d:02d}_val.csv')
+      data_train.to_csv(path_or_buf=train_path, index=False, sep='\t')
+      data_val.to_csv(path_or_buf=val_path, index=False, sep='\t')          
+
+
+def is_data_prepared(save_dir, dataset_info):
+  print('Checking if data is already prepared')
+  save_file_name = 'info.pt'
+  
+  for (root, dirs, files) in os.walk(save_dir):
+    for file in files:
+      if save_file_name == file:
+        save_file_path = os.path.join(root, save_file_name)        
+        saved_info = torch.load(save_file_path)
+        if saved_info == dataset_info:
+          return True, root  
+  return False, None
 
 def get_strided_data_clust(dt, gt_size, horizon, step):
-    inp_te = []
-    dtt = dt.astype(np.float32)
-    raw_data = dtt
+  inp_te = []
+  dtt = dt.astype(np.float32)
+  raw_data = dtt
+  features_count = len(dt.columns) - 2 # features without 'frames' and 'obs'
 
-    ped = raw_data.ped.unique()
-    frame=[]
-    ped_ids=[]
-    for p in ped:
-        for i in range(1+(raw_data[raw_data.ped == p].shape[0] - gt_size - horizon) // step):            
-            frame.append(dt[dt.ped == p].iloc[i * step:i * step + gt_size + horizon, [0]].values.squeeze())
-            inp_te.append(raw_data[raw_data.ped == p].iloc[i * step:i * step + gt_size + horizon, 2:4].values)
-            ped_ids.append(p)
+  obj = raw_data.obj.unique()
+  frame=[]
+  obj_ids=[]
+  for p in obj:
+    for i in range(1+(raw_data[raw_data.obj == p].shape[0] - gt_size - horizon) // step):            
+      frame.append(dt[dt.obj == p].iloc[i * step:i * step + gt_size + horizon, [0]].values.squeeze())
+      inp_te.append(raw_data[raw_data.obj == p].iloc[i * step:i * step + gt_size + horizon, 2:features_count+2].values)
+      obj_ids.append(p)
 
-    frames=np.stack(frame)
-    inp_te_np = np.stack(inp_te)
-    ped_ids=np.stack(ped_ids)
+  frames=np.stack(frame)
+  inp_te_np = np.stack(inp_te)
+  obj_ids=np.stack(obj_ids)
 
+  # create "velocity" distance vectors, because it trains better this way
+  inp_speed = np.concatenate((np.zeros((inp_te_np.shape[0],1,features_count)),inp_te_np[:,1:,0:features_count] - inp_te_np[:, :-1, 0:features_count]),1)
+  inp_norm = np.concatenate((inp_te_np,inp_speed),2)
 
-    inp_speed = np.concatenate((np.zeros((inp_te_np.shape[0],1,2)),inp_te_np[:,1:,0:2] - inp_te_np[:, :-1, 0:2]),1)
+  inp_mean=np.zeros(4)
+  inp_std=np.ones(4)
 
-    inp_norm=np.concatenate((inp_te_np,inp_speed),2)
-    inp_mean=np.zeros(4)
-    inp_std=np.ones(4)
+  inp = inp_norm[:,:gt_size]
+  out = inp_norm[:,gt_size:]
+  info = {'mean': inp_mean, 'std': inp_std, 'seq_start': inp_te_np[:, 0:1, :].copy(),'frames':frames,'objs':obj_ids}
 
-    return inp_norm[:,:gt_size],inp_norm[:,gt_size:],{'mean': inp_mean, 'std': inp_std, 'seq_start': inp_te_np[:, 0:1, :].copy(),'frames':frames,'peds':ped_ids}
+  return inp, out, info
 
 
 def distance_metrics(gt,preds):
-    errors = np.zeros(preds.shape[:-1])
-    for i in range(errors.shape[0]):
-        for j in range(errors.shape[1]):
-            errors[i, j] = scipy.spatial.distance.euclidean(gt[i, j], preds[i, j])
-    return errors.mean(),errors[:,-1].mean(),errors
+  errors = np.zeros(preds.shape[:-1])
+  for i in range(errors.shape[0]):
+    for j in range(errors.shape[1]):
+      errors[i, j] = scipy.spatial.distance.euclidean(gt[i, j], preds[i, j])
+  return errors.mean(),errors[:,-1].mean(),errors
