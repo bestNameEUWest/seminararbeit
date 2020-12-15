@@ -43,10 +43,7 @@ class IndividualTF(nn.Module):
                 nn.init.xavier_uniform_(p)
 
 
-
-
-
-    def forward(self, *input):
+    def forward(self, *input):        
         return self.model.generator(self.model(*input))
 
 class LinearEmbedding(nn.Module):
