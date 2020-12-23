@@ -42,8 +42,8 @@ def create_dataset(dataset_folder, dataset_name, gt,horizon, features,delim="\t"
 
   for i_dt, dt in enumerate(datasets_list):
     raw_data = pd.read_csv(os.path.join(full_dt_folder, dt), delimiter=delim, na_values="?")
-    raw_data = raw_data.rename(columns={'trackId': 'obj', 'xCenter': 'x', 'yCenter': 'y'})
     raw_data = raw_data[features]
+    #print(f'raw_data: \n{raw_data.head()}')
     raw_data.sort_values(by=[raw_data.columns[0], raw_data.columns[1]], inplace=True)
     inp,out,info=get_strided_data_clust(raw_data, gt, horizon, step)
     dt_frames=info['frames']
@@ -97,22 +97,25 @@ class IndividualTfDataset(Dataset):
             'objs': self.data['objs'][index],
             }
 
-def format_raw_dataset(raw_dataset_folder, dataset_name):
-  validation_ratio = 0.2
+
+
+def format_raw_dataset(raw_dataset_folder, dataset_name, target_dataset_folder):
+  validation_ratio = 0.15
+
   test_dataset = '01_tracks.csv'
-  target_dataset_folder = 'datasets'
+  relevant_cols =['frame', 'obj', 'x', 'y', 'heading', 'width', 'length', 'xVelocity', 'yVelocity', 'xAcceleration', 'yAcceleration']  # all relevant data
   datasets_list = [dir for dir in os.listdir(os.path.join(raw_dataset_folder, dataset_name))]
   os.makedirs(os.path.join(target_dataset_folder, dataset_name))      
-
+  
   for (i_d, dataset) in enumerate(datasets_list):  
     data = pd.read_csv(os.path.join(raw_dataset_folder, dataset_name, dataset))
     data = data.rename(columns={'trackId': 'obj', 'xCenter': 'x', 'yCenter': 'y'})
-    data = data[relevant_cols]
+    date = data[relevant_cols] 
     
     for set_type in ['train', 'val', 'test']:    
       try:
         path = os.path.join(target_dataset_folder, dataset_name, set_type)
-        os.makedirs(path)      
+        os.makedirs(path)   	
       except:
         pass
 
@@ -121,7 +124,7 @@ def format_raw_dataset(raw_dataset_folder, dataset_name):
       data.to_csv(path_or_buf=test_path, index=False, sep='\t')
     else:
       size = data.shape[0]
-      cutoff_num = int((1-ratio)*size)
+      cutoff_num = int((1-validation_ratio)*size)
       data_train = data.head(cutoff_num)  
       data_val = data.tail(size - cutoff_num)  
 
@@ -164,8 +167,11 @@ def get_strided_data_clust(dt, gt_size, horizon, step):
   obj_ids=np.stack(obj_ids)
 
   # create "velocity" distance vectors, because it trains better this way
-  inp_speed = np.concatenate((np.zeros((inp_te_np.shape[0],1,features_count)),inp_te_np[:,1:,0:features_count] - inp_te_np[:, :-1, 0:features_count]),1)
-  inp_norm = np.concatenate((inp_te_np,inp_speed),2)
+  #inp_speed = np.concatenate((np.zeros((inp_te_np.shape[0],1,features_count)),inp_te_np[:,1:,0:features_count] - inp_te_np[:, :-1, 0:features_count]),1)
+  #inp_norm = np.concatenate((inp_te_np,inp_speed),2)
+
+  inp_norm = inp_te_np
+  #print(f'inp_norm: {inp_norm}')
 
   inp_mean=np.zeros(4)
   inp_std=np.ones(4)
@@ -173,6 +179,10 @@ def get_strided_data_clust(dt, gt_size, horizon, step):
   inp = inp_norm[:,:gt_size]
   out = inp_norm[:,gt_size:]
   info = {'mean': inp_mean, 'std': inp_std, 'seq_start': inp_te_np[:, 0:1, :].copy(),'frames':frames,'objs':obj_ids}
+
+
+  #print(f'inp: {inp[0]}')
+  #print(f'out: {out[0]}')
 
   return inp, out, info
 
