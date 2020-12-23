@@ -53,7 +53,7 @@ def argparser_function():
   parser.add_argument('--dataset_name',type=str,default='preparation')
   parser.add_argument('--col_names', type=str, default='["frame", "obj", "x", "y"]')
   parser.add_argument('--max_epoch',type=int, default=20)
-  parser.add_argument('--batch_size',type=int,default=512)   
+  parser.add_argument('--batch_size',type=int,default=256)   
   parser.add_argument('--run_info', type=str, default=None)
   parser.add_argument('--steps',type=int, default=5) 
 
@@ -219,9 +219,9 @@ def objective(trial):
   args.heads = 2**trial.suggest_int('heads', 1, 4)
   args.dropout = trial.suggest_float('dropout', 0.1, 0.9)
 
-  #args.layers = 2
-  #args.emb_size = 2**5
-  #args.heads = 2**1
+  #args.layers = 16
+  #args.emb_size = 2**9
+  #args.heads = 2**4
   #args.dropout = 0.1
 
   model=individual_TF.IndividualTF(feature_count, 3, 3, N=args.layers, d_model=args.emb_size,
@@ -342,7 +342,7 @@ def objective(trial):
 
 if __name__=='__main__':
   study = optuna.create_study()
-  study.optimize(objective, n_trials=10)
+  study.optimize(objective, n_trials=100)
 
   pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
   complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
