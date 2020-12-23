@@ -3,9 +3,10 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
 ### files ###
-pytorch_data_save/
-models/
-runs/
+pytorch_data_save/*
+models/*
+runs/*
+datasets/*
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
