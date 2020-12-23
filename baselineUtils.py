@@ -100,39 +100,39 @@ class IndividualTfDataset(Dataset):
 
 
 def format_raw_dataset(raw_dataset_folder, dataset_name, target_dataset_folder):
-  validation_ratio = 0.15
-
-  test_dataset = '01_tracks.csv'
-  relevant_cols =['frame', 'obj', 'x', 'y', 'heading', 'width', 'length', 'xVelocity', 'yVelocity', 'xAcceleration', 'yAcceleration']  # all relevant data
+  test_and_val_ratio = 0.15
+  relevant_cols = ['frame', 'obj', 'x', 'y', 'heading', 'width', 'length', 'xVelocity', 'yVelocity', 'xAcceleration', 'yAcceleration']  # all relevant data
   datasets_list = [dir for dir in os.listdir(os.path.join(raw_dataset_folder, dataset_name))]
-  os.makedirs(os.path.join(target_dataset_folder, dataset_name))      
-  
+  try:
+    os.makedirs(os.path.join(target_dataset_folder, dataset_name))      
+  except:
+    pass
+
   for (i_d, dataset) in enumerate(datasets_list):  
     data = pd.read_csv(os.path.join(raw_dataset_folder, dataset_name, dataset))
     data = data.rename(columns={'trackId': 'obj', 'xCenter': 'x', 'yCenter': 'y'})
-    date = data[relevant_cols] 
-    
-    for set_type in ['train', 'val', 'test']:    
+    date = data[relevant_cols]  
+
+    size = data.shape[0]
+    cutoff_num = int((1-test_and_val_ratio*2)*size)    
+    data_train = data.head(cutoff_num)
+  
+    data_rem = data.tail(size - cutoff_num)
+    cutoff_num_val_test = int(data_rem.shape[0]/2)
+    data_val = data_rem.head(cutoff_num_val_test)
+    data_test = data_rem.tail(cutoff_num_val_test)
+
+    dss = [data_train, data_val, data_test]
+    set_types = ['train', 'val', 'test']
+
+    for set_type, ds in zip(set_types, dss):    
       try:
         path = os.path.join(target_dataset_folder, dataset_name, set_type)
         os.makedirs(path)   	
       except:
         pass
-
-    if dataset == test_dataset:
-      test_path = os.path.join(f'{target_dataset_folder}', dataset_name, 'test', f'{i_d:02d}_test.csv')
-      data.to_csv(path_or_buf=test_path, index=False, sep='\t')
-    else:
-      size = data.shape[0]
-      cutoff_num = int((1-validation_ratio)*size)
-      data_train = data.head(cutoff_num)  
-      data_val = data.tail(size - cutoff_num)  
-
-      train_path = os.path.join(f'{target_dataset_folder}', dataset_name, 'train', f'{i_d:02d}_train.csv')
-      val_path = os.path.join(f'{target_dataset_folder}', dataset_name, 'val', f'{i_d:02d}_val.csv')
-      data_train.to_csv(path_or_buf=train_path, index=False, sep='\t')
-      data_val.to_csv(path_or_buf=val_path, index=False, sep='\t')          
-
+      data_path = os.path.join(target_dataset_folder, dataset_name, set_type, f'{i_d:02d}_{set_type}.csv')
+      ds.to_csv(path_or_buf=data_path, index=False, sep='\t')
 
 def is_data_prepared(save_dir, dataset_info):
   print('Checking if data is already prepared')
@@ -166,11 +166,11 @@ def get_strided_data_clust(dt, gt_size, horizon, step):
   inp_te_np = np.stack(inp_te)
   obj_ids=np.stack(obj_ids)
 
-  # create "velocity" distance vectors, because it trains better this way
-  #inp_speed = np.concatenate((np.zeros((inp_te_np.shape[0],1,features_count)),inp_te_np[:,1:,0:features_count] - inp_te_np[:, :-1, 0:features_count]),1)
-  #inp_norm = np.concatenate((inp_te_np,inp_speed),2)
+  # create "velocity" distance vectors, because it seems to not work with direct values
+  inp_speed = np.concatenate((np.zeros((inp_te_np.shape[0],1,2)),inp_te_np[:,1:,0:2] - inp_te_np[:, :-1, 0:2]),1)
+  inp_norm = np.concatenate((inp_te_np, inp_speed ,inp_te_np[:, :, 2:]),2)
 
-  inp_norm = inp_te_np
+  #inp_norm = inp_speed
   #print(f'inp_norm: {inp_norm}')
 
   inp_mean=np.zeros(4)
