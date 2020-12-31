@@ -7,6 +7,7 @@ from datetime import datetime
 
 # external
 import numpy as np
+import pandas as pd
 import scipy.io
 import pickle
 import optuna
@@ -53,7 +54,7 @@ def argparser_function():
   parser.add_argument('--dataset_name',type=str,default='preparation')
   parser.add_argument('--col_names', type=str, default='["frame", "obj", "x", "y"]')
   parser.add_argument('--max_epoch',type=int, default=20)
-  parser.add_argument('--batch_size',type=int,default=256)   
+  parser.add_argument('--batch_size',type=int,default=512)   
   parser.add_argument('--run_info', type=str, default=None)
   parser.add_argument('--steps',type=int, default=5) 
 
@@ -162,27 +163,36 @@ def means_and_stds(train_dataset, feature_count):
     target_means.append(input_src_mean[:2])
     target_stds.append(input_src_std[:2])
 
-  # calculate the mean and std of the features of all datasets
-  input_mean=torch.stack(input_means).mean(0)
-  input_std=torch.stack(input_stds).std(0)        
+  # calculate the mean and std of our datasets
+  if len(input_means) is 1: # if it is just one dataset
+    # all input features
+    input_mean=input_means[0]
+    input_std=input_stds[0]        
+    # target coordinate distances
+    target_mean=target_means[0]
+    target_std=target_stds[0]
+  else: 
+    input_mean=torch.stack(input_means).mean(0)
+    input_std=torch.stack(input_stds).std(0)        
 
-  # calculate the mean and std of only the coordinate velocities of all datasets
-  target_mean=torch.stack(target_means).mean(0)
-  target_std=torch.stack(target_stds).std(0)
-
+    target_mean=torch.stack(target_means).mean(0)
+    target_std=torch.stack(target_stds).std(0)
 
   return input_mean, input_std, target_mean, target_std
 
+def save_log_info(args, info):
+  path = f'logs/{args.name}/{info.date[0]}'
+    
+  try:
+    os.makedirs(path)
+  except:
+    pass
 
-
+  info.to_csv(f'{path}/run_log.csv', index=False, header=True)
 
 ################################################################################
 ######################## more important learning stuff #########################
 ################################################################################
-
-def hyperparapm_handler(trial, args):
-
-  pass
 
 
 # objective function to minimize for optuna
@@ -207,21 +217,14 @@ def objective(trial):
   test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
    
 
-  if args.run_info is not None:        
-    save_comment = f'{args.run_info}_{save_comment}'
-    train_comment = f'{args.run_info} {train_comment}'        
-    log=SummaryWriter(log_dir=f'runs/{save_comment}')
-  else:        
-    log=SummaryWriter()
-
   args.layers = trial.suggest_int('layers', 1, 16) 
-  args.emb_size = 2**trial.suggest_int('emb_size', 4, 9) # must be tested for max value
-  args.heads = 2**trial.suggest_int('heads', 1, 4)
+  args.emb_size = 2**trial.suggest_int('emb_size_exp', 4, 9) # must be tested for max value
+  args.heads = 2**trial.suggest_int('heads_exp', 1, 4)
   args.dropout = trial.suggest_float('dropout', 0.1, 0.9)
 
-  #args.layers = 16
-  #args.emb_size = 2**9
-  #args.heads = 2**4
+  args.layers = 1
+  args.emb_size = 4
+  args.heads = 2
   #args.dropout = 0.1
 
   model=individual_TF.IndividualTF(feature_count, 3, 3, N=args.layers, d_model=args.emb_size,
@@ -229,12 +232,22 @@ def objective(trial):
   
   optim = NoamOpt(args.emb_size, args.factor, len(tr_dl)*args.warmup, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
 
-  save_comment = f'he={args.heads}_la={args.layers}_st={args.steps}_es={args.emb_size}_do={args.dropout}'
+  now = datetime.now()
+  save_time = now.strftime("%d-%m-%Y_%Ss-%Mm-%Hh")   
+
+  save_comment = f'{save_time}_he={args.heads}_la={args.layers}_st={args.steps}_es={args.emb_size}_do={args.dropout}'
   train_comment = (f'heads={args.heads} ' +
                     f'layers={args.layers} ' +
                     f'steps={args.steps} ' +
                     f'emb_size={args.emb_size} ' +
-                    f'dropout={args.dropout} ')    
+                    f'dropout={args.dropout} ')
+
+  
+  if args.run_info is not None:        
+    save_comment = f'{args.run_info}_{save_comment}'
+    train_comment = f'{args.run_info} {train_comment}'        
+  
+  log=SummaryWriter(log_dir=f'runs/{save_comment}')
    
   print(f'Training for: {train_comment}')
   epoch=0
@@ -245,6 +258,23 @@ def objective(trial):
 
   t0 = time.time()
 
+  df_column_names = ["date", "current_epoch", "max_epoch", "training_time", "total_loss", "agv_loss", "mad", "fad",
+                  "layers", "emb_size", "heads", "dropout",
+                  "x", "y", "heading", "width", "length", "xVelocity", "yVelocity", "xAcceleration", "yAcceleration"]
+
+  log_data = pd.DataFrame(columns=df_column_names)
+  next_row = {"date": save_time, "current_epoch": 0, "max_epoch": args.max_epoch, "training_time": 0.0, "total_loss": 0.0, "agv_loss": 0.0, "mad": 0.0, "fad": 0.0,
+                        "layers": args.layers, "emb_size": args.emb_size, "heads": args.heads, "dropout": args.dropout}
+      
+  df_poss_cols= ["x", "y", "heading", "width", "length", "xVelocity", "yVelocity", "xAcceleration", "yAcceleration"]
+  contain_vals = []
+  for df_poss_col in df_poss_cols:
+    if df_poss_col in args.col_names:
+      contain_vals.append(1)
+    else:
+      contain_vals.append(0)
+  dic = dict(zip(df_poss_cols, contain_vals))
+  next_row.update(dic)
 
   while epoch<args.max_epoch:
     epoch_loss=0
@@ -285,7 +315,7 @@ def objective(trial):
     epoch+=1
     log.add_scalar(f'Loss/train/', epoch_loss / len(tr_dl), epoch)
 
-
+    min_mad = math.inf
     with torch.no_grad():
       model.eval()
 
@@ -328,21 +358,33 @@ def objective(trial):
       mad, fad, errs = baselineUtils.distance_metrics(gt, pr)
       log.add_scalar('validation/MAD', mad, epoch)
       log.add_scalar('validation/FAD', fad, epoch)
-    
+      if mad < min_mad:
+        min_mad = mad
+
+      train_time = f'{time.time()-e_t0:03.4f}'
+      avg_loss = epoch_loss / len(tr_dl)
+      update = {"current_epoch": epoch, "training_time": train_time, "total_loss": epoch_loss, "agv_loss": avg_loss, "mad": mad, "fad": fad}
+      next_row.update(update)
+      log_data = log_data.append(next_row, ignore_index=True)
+  
       if epoch==1:
         torch.save(model.state_dict(),f'models/{args.name}/{epoch:05d}.pth')
 
       if epoch%args.print_step==0:         
-        print(f"Epoch: {epoch:03d}/{args.max_epoch:03d}  Training time: {time.time()-e_t0:03.4f}  Loss: {epoch_loss:03.4f}  Avg. Loss: {epoch_loss / len(tr_dl):03.4f} MAD: {mad:03.4f} FAD: {fad:03.4f}") 
+        print(f"Epoch: {epoch:03d}/{args.max_epoch:03d}  Training time: {train_time}  Loss: {epoch_loss:03.4f}  Avg. Loss: {avg_loss:03.4f} MAD: {mad:03.4f} FAD: {fad:03.4f}") 
 
-  print("Total training time: %07.4f" % (time.time()-t0))
+  total_train_time = time.time()-t0
+  print(f"Total training time: {total_train_time:07.4f}")
 
-  return mad
+  log_data['total_train_time'] = total_train_time
+  save_log_info(args, log_data)
+
+  return min_mad
 
 
 if __name__=='__main__':
   study = optuna.create_study()
-  study.optimize(objective, n_trials=100)
+  study.optimize(objective, n_trials=30)
 
   pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
   complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
