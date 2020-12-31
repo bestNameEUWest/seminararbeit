@@ -222,9 +222,9 @@ def objective(trial):
   args.heads = 2**trial.suggest_int('heads_exp', 1, 4)
   args.dropout = trial.suggest_float('dropout', 0.1, 0.9)
 
-  args.layers = 1
-  args.emb_size = 4
-  args.heads = 2
+  #args.layers = 1
+  #args.emb_size = 4
+  #args.heads = 2
   #args.dropout = 0.1
 
   model=individual_TF.IndividualTF(feature_count, 3, 3, N=args.layers, d_model=args.emb_size,
