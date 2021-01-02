@@ -5,7 +5,6 @@
 ### files ###
 pytorch_data_save/*
 models/*
-runs/*
 datasets/*
 tmp.sh
 rename.py
