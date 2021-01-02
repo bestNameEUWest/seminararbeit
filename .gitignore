@@ -1,12 +1,14 @@
 
+
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
 ### files ###
 pytorch_data_save/*
 models/*
-runs/*
 datasets/*
+tmp.sh
+rename.py
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
