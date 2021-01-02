@@ -54,7 +54,7 @@ def argparser_function():
   parser.add_argument('--dataset_name',type=str,default='preparation')
   parser.add_argument('--col_names', type=str, default='["frame", "obj", "x", "y"]')
   parser.add_argument('--max_epoch',type=int, default=20)
-  parser.add_argument('--batch_size',type=int,default=512)   
+  parser.add_argument('--batch_size',type=int,default=256)   
   parser.add_argument('--run_info', type=str, default=None)
   parser.add_argument('--steps',type=int, default=5) 
 
