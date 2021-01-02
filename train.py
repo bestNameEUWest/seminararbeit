@@ -233,7 +233,7 @@ def objective(trial):
   optim = NoamOpt(args.emb_size, args.factor, len(tr_dl)*args.warmup, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
 
   now = datetime.now()
-  save_time = now.strftime("%d-%m-%Y_%Ss-%Mm-%Hh")   
+  save_time = now.strftime("%d-%m-%Y_%Hh-%Mm-%Ss")   
 
   save_comment = f'{save_time}_he={args.heads}_la={args.layers}_st={args.steps}_es={args.emb_size}_do={args.dropout}'
   train_comment = (f'heads={args.heads} ' +
