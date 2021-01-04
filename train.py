@@ -49,11 +49,12 @@ def argparser_function():
   parser.add_argument('--print_step', type=int, default=1)
   parser.add_argument('--warmup', type=int, default=10) 
   parser.add_argument('--evaluate', type=bool, default=True)
+  parser.add_argument('--optuna', type=bool, default=False)
   
   # variables
   parser.add_argument('--dataset_name',type=str,default='preparation')
   parser.add_argument('--col_names', type=str, default='["frame", "obj", "x", "y"]')
-  parser.add_argument('--max_epoch',type=int, default=20)
+  parser.add_argument('--max_epoch',type=int, default=1000)
   parser.add_argument('--batch_size',type=int,default=256)   
   parser.add_argument('--run_info', type=str, default=None)
   parser.add_argument('--steps',type=int, default=5) 
@@ -67,6 +68,7 @@ def argparser_function():
   
   args=parser.parse_args()
   args.col_names = ast.literal_eval(args.col_names)
+  #args.optuna = ast.literal_eval(args.optuna)
 
   return args
 
@@ -181,7 +183,8 @@ def means_and_stds(train_dataset, feature_count):
   return input_mean, input_std, target_mean, target_std
 
 def save_log_info(args, info):
-  path = f'logs/{args.name}/{info.date[0]}'
+  cols = "_".join(args.col_names[2:])
+  path = f'logs/{cols}/{info.date[0]}'
     
   try:
     os.makedirs(path)
@@ -211,22 +214,27 @@ def objective(trial):
   if args.cpu or not torch.cuda.is_available():
     device=torch.device("cpu")
   args.verbose=True    
+
+  if args.optuna == True:
+    print('Using optuna')
+    args.layers = trial.suggest_int('layers_exp', 1, 8) 
+    args.emb_size = trial.suggest_int('emb_size_exp', 16, 512)
+    args.heads = trial.suggest_int('heads_exp', 1, 8)
+    args.batch_size = trial.suggest_int('batch_size_exp', 16, 256)
+  else:
+    print('Not using optuna')   
+    args.layers = 8
+    args.emb_size = 512
+    args.heads = 8
+    args.batch_size = 256
     
+
   tr_dl = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
   val_dl = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
   test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
    
 
-  args.layers = trial.suggest_int('layers', 1, 16) 
-  args.emb_size = 2**trial.suggest_int('emb_size_exp', 4, 9) # must be tested for max value
-  args.heads = 2**trial.suggest_int('heads_exp', 1, 4)
-  args.dropout = trial.suggest_float('dropout', 0.1, 0.9)
-
-  #args.layers = 1
-  #args.emb_size = 4
-  #args.heads = 2
-  #args.dropout = 0.1
-
+  
   model=individual_TF.IndividualTF(feature_count, 3, 3, N=args.layers, d_model=args.emb_size,
                                    d_ff=2048, h=args.heads, dropout=args.dropout,mean=[0,0],std=[0,0]).to(device)                              
   
@@ -235,29 +243,20 @@ def objective(trial):
   now = datetime.now()
   save_time = now.strftime("%d-%m-%Y_%Hh-%Mm-%Ss")   
 
-  save_comment = f'{save_time}_he={args.heads}_la={args.layers}_st={args.steps}_es={args.emb_size}_do={args.dropout}'
+  save_comment = f'{save_time}_he={args.heads}_la={args.layers}_es={args.emb_size}_ba={args.batch_size}'
   train_comment = (f'heads={args.heads} ' +
                     f'layers={args.layers} ' +
-                    f'steps={args.steps} ' +
                     f'emb_size={args.emb_size} ' +
-                    f'dropout={args.dropout} ')
+                    f'batch_size={args.batch_size} ')
 
   
   if args.run_info is not None:        
     save_comment = f'{args.run_info}_{save_comment}'
     train_comment = f'{args.run_info} {train_comment}'        
   
-  log=SummaryWriter(log_dir=f'runs/{save_comment}')
+  cols = "_".join(args.col_names[2:])
+  log=SummaryWriter(log_dir=f'runs/{cols}/{save_comment}')
    
-  print(f'Training for: {train_comment}')
-  epoch=0
-  epoch_check_freq = 10
-  val_delta_thresh = 0.01
-  last_val_mad_err = math.inf
-  last_val_fad_err = math.inf
-
-  t0 = time.time()
-
   df_column_names = ["date", "current_epoch", "max_epoch", "training_time", "total_loss", "agv_loss", "mad", "fad",
                   "layers", "emb_size", "heads", "dropout",
                   "x", "y", "heading", "width", "length", "xVelocity", "yVelocity", "xAcceleration", "yAcceleration"]
@@ -276,7 +275,18 @@ def objective(trial):
   dic = dict(zip(df_poss_cols, contain_vals))
   next_row.update(dic)
 
-  while epoch<args.max_epoch:
+  print(f'Training for: {train_comment}')
+  t0 = time.time()
+  epoch=0
+  epoch_check_freq = 50 # our k
+  val_rel_err_thresh = 0.01
+ 
+  val_err_min = math.inf  
+  val_rel_err = math.inf
+
+  val_errs = []
+  
+  while val_rel_err > val_rel_err_thresh and epoch < args.max_epoch:
     epoch_loss=0
     e_t0 = time.time()
     model.train()
@@ -360,6 +370,7 @@ def objective(trial):
       log.add_scalar('validation/FAD', fad, epoch)
       if mad < min_mad:
         min_mad = mad
+      val_errs.append(mad)
 
       train_time = f'{time.time()-e_t0:03.4f}'
       avg_loss = epoch_loss / len(tr_dl)
@@ -371,7 +382,21 @@ def objective(trial):
         torch.save(model.state_dict(),f'models/{args.name}/{epoch:05d}.pth')
 
       if epoch%args.print_step==0:         
-        print(f"Epoch: {epoch:03d}/{args.max_epoch:03d}  Training time: {train_time}  Loss: {epoch_loss:03.4f}  Avg. Loss: {avg_loss:03.4f} MAD: {mad:03.4f} FAD: {fad:03.4f}") 
+        print(f"Epoch: {epoch:03d} Training time: {train_time}  Loss: {epoch_loss:03.4f}  Avg. Loss: {avg_loss:03.4f} MAD: {mad:03.4f} FAD: {fad:03.4f}") 
+      
+      if epoch%epoch_check_freq==0:
+        if epoch > epoch_check_freq:
+          curr_val_err_min = min(val_errs)
+          val_rel_err = (val_err_min - curr_val_err_min)/val_err_min
+          print(f'val_err_min: {val_err_min:03.4f} curr_val_err_min: {curr_val_err_min:03.4f} val_rel_err: {val_rel_err:03.4f}')
+        
+        val_err_min = min(val_errs)
+        val_errs = []        
+
+        if val_rel_err < val_rel_err_thresh:
+          print(f'Reached less than {val_rel_err_thresh} val error change over last {epoch_check_freq} epochs. Stopping training')
+        if epoch >= args.max_epoch:
+          print(f'Reached max epoch of {args.max_epoch}. Stopping training.')
 
   total_train_time = time.time()-t0
   print(f"Total training time: {total_train_time:07.4f}")
@@ -383,8 +408,12 @@ def objective(trial):
 
 
 if __name__=='__main__':
-  study = optuna.create_study()
-  study.optimize(objective, n_trials=30)
+  search_space = {"layers_exp": [1, 2, 8],
+                  "emb_size_exp": [16, 32, 512],
+                  "heads_exp": [1, 2, 8],
+                  "batch_size_exp": [16, 32, 256]}
+  study = optuna.create_study(sampler=optuna.samplers.GridSampler(search_space))
+  study.optimize(objective, n_trials=1, show_progress_bar=True)
 
   pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
   complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
@@ -397,6 +426,9 @@ if __name__=='__main__':
   print("Best trial:")
   trial = study.best_trial
   print("  Value: ", trial.value)
+
+  trials_df = study.trials_dataframe()
+  trials_df.to_csv('logs/trials_df.csv')
 
   print("  Params: ")
   for key, value in trial.params.items():
