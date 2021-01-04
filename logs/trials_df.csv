@@ -1,0 +1,2 @@
+,number,value,datetime_start,datetime_complete,duration,system_attrs_grid_id,system_attrs_search_space,state
+0,0,0.14118626419082703,2021-01-03 23:45:31.611352,2021-01-03 23:47:20.971439,0 days 00:01:49.360087,77,"OrderedDict([('batch_size_exp', [16, 32, 256]), ('emb_size_exp', [16, 32, 512]), ('heads_exp', [1, 2, 8]), ('layers_exp', [1, 2, 8])])",COMPLETE
