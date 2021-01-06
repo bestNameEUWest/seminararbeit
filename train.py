@@ -49,13 +49,12 @@ def argparser_function():
   parser.add_argument('--print_step', type=int, default=1)
   parser.add_argument('--warmup', type=int, default=10) 
   parser.add_argument('--evaluate', type=bool, default=True)
-  parser.add_argument('--optuna', type=bool, default=False)
   
   # variables
   parser.add_argument('--dataset_name',type=str,default='preparation')
   parser.add_argument('--col_names', type=str, default='["frame", "obj", "x", "y"]')
   parser.add_argument('--max_epoch',type=int, default=1000)
-  parser.add_argument('--batch_size',type=int,default=256)   
+  parser.add_argument('--batch_size',type=int,default=512)   
   parser.add_argument('--run_info', type=str, default=None)
   parser.add_argument('--steps',type=int, default=5) 
 
@@ -68,7 +67,6 @@ def argparser_function():
   
   args=parser.parse_args()
   args.col_names = ast.literal_eval(args.col_names)
-  #args.optuna = ast.literal_eval(args.optuna)
 
   return args
 
@@ -215,18 +213,13 @@ def objective(trial):
     device=torch.device("cpu")
   args.verbose=True    
 
-  if args.optuna == True:
-    print('Using optuna')
-    args.layers = trial.suggest_int('layers_exp', 1, 8) 
-    args.emb_size = trial.suggest_int('emb_size_exp', 16, 512)
-    args.heads = trial.suggest_int('heads_exp', 1, 8)
-    args.batch_size = trial.suggest_int('batch_size_exp', 16, 256)
-  else:
-    print('Not using optuna')   
-    args.layers = 8
-    args.emb_size = 512
-    args.heads = 8
-    args.batch_size = 256
+  args.layers = trial.suggest_int('layers', 1, 8) 
+  args.emb_size = trial.suggest_int('emb_size', 16, 512)
+  args.heads = trial.suggest_int('heads', 1, 8)
+   
+  #args.layers = 8
+  #args.emb_size = 512
+  #args.heads = 8
     
 
   tr_dl = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
@@ -408,12 +401,11 @@ def objective(trial):
 
 
 if __name__=='__main__':
-  search_space = {"layers_exp": [1, 2, 8],
-                  "emb_size_exp": [16, 32, 512],
-                  "heads_exp": [1, 2, 8],
-                  "batch_size_exp": [16, 32, 256]}
+  search_space = {"layers": [1, 2, 8],
+                  "emb_size": [16, 32, 128, 512],
+                  "heads": [1, 2, 8]}
   study = optuna.create_study(sampler=optuna.samplers.GridSampler(search_space))
-  study.optimize(objective, n_trials=1, show_progress_bar=True)
+  study.optimize(objective, n_trials=36, show_progress_bar=True)
 
   pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
   complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
