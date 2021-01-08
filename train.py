@@ -180,6 +180,7 @@ def means_and_stds(train_dataset, feature_count):
 
   return input_mean, input_std, target_mean, target_std
 
+cols = ''
 def save_log_info(args, info):
   cols = "_".join(args.col_names[2:])
   path = f'logs/{cols}/{info.date[0]}'
@@ -195,7 +196,7 @@ def save_log_info(args, info):
 ######################## more important learning stuff #########################
 ################################################################################
 
-
+save_time = ''
 # objective function to minimize for optuna
 def objective(trial):
   args = argparser_function()
@@ -217,9 +218,9 @@ def objective(trial):
   args.emb_size = trial.suggest_int('emb_size', 16, 512)
   args.heads = trial.suggest_int('heads', 1, 8)
    
-  #args.layers = 8
-  #args.emb_size = 512
-  #args.heads = 8
+  args.layers = 8
+  args.emb_size = 512
+  args.heads = 2
     
 
   tr_dl = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
@@ -401,11 +402,11 @@ def objective(trial):
 
 
 if __name__=='__main__':
-  search_space = {"layers": [1, 2, 8],
-                  "emb_size": [16, 32, 128, 512],
-                  "heads": [1, 2, 8]}
+  search_space = {"layers": [8],
+                  "emb_size": [512],
+                  "heads": [2]}
   study = optuna.create_study(sampler=optuna.samplers.GridSampler(search_space))
-  study.optimize(objective, n_trials=36, show_progress_bar=True)
+  study.optimize(objective, n_trials=1)
 
   pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
   complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
@@ -420,7 +421,7 @@ if __name__=='__main__':
   print("  Value: ", trial.value)
 
   trials_df = study.trials_dataframe()
-  trials_df.to_csv('logs/trials_df.csv')
+  trials_df.to_csv(f'logs/{cols}/{save_time}_trials_df.csv')
 
   print("  Params: ")
   for key, value in trial.params.items():

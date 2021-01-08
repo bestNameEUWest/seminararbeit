@@ -1,0 +1,2 @@
+,number,value,datetime_start,datetime_complete,duration,params_emb_size,params_heads,params_layers,system_attrs_grid_id,system_attrs_search_space,state
+0,0,0.020597213912231908,2021-01-08 08:09:03.843132,2021-01-08 12:06:48.377205,0 days 03:57:44.534073,512,2,8,0,"OrderedDict([('emb_size', [512]), ('heads', [2]), ('layers', [8])])",COMPLETE
