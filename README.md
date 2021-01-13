@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Sample code for Traffic_Dynamics_Transformer
 
 Usage:
@@ -12,8 +11,3 @@ python train.py
 
 ---------------------
 The code is based on this work: [Transformer Network for Trajectory Prediction](https://arxiv.org/pdf/2003.08111.pdf)
-
-
-=======
-# rounD datasets
->>>>>>> 150a0ed51de434ab5af921ffd699babfc8e199e0
