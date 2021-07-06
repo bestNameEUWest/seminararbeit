@@ -218,9 +218,10 @@ def objective(trial):
   args.emb_size = trial.suggest_int('emb_size', 16, 512)
   args.heads = trial.suggest_int('heads', 1, 8)
    
-  args.layers = 8
-  args.emb_size = 512
-  args.heads = 2
+  # I used this for some quick tests regarding available memory size
+  # args.layers = 8
+  # args.emb_size = 512
+  # args.heads = 2
     
 
   tr_dl = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
@@ -402,6 +403,7 @@ def objective(trial):
 
 
 if __name__=='__main__':
+  # set the hyperparam search space, here we just took a set of one value per parameter
   search_space = {"layers": [8],
                   "emb_size": [512],
                   "heads": [2]}
